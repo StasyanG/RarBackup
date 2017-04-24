@@ -1,0 +1,2 @@
+\\127.0.0.1\D$\testArchiving
+\\127.0.0.1\D$\testArchiving2
