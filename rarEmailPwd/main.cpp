@@ -273,22 +273,9 @@ int wmain(int argc, wchar_t* argv[]) {
 			Log.d(L"rarEmailPwd.main", wsResult);
 		}
 
-		/*std::string sInPath = std::string(sFolderPath.begin(), sFolderPath.end());
-		std::string sOutPath = options.getString("backup_path") + "\\"
-							+ std::string(sArchiveName.begin(), sArchiveName.end()) + "_" + (nBackupMode ? "diff" : "full");*/
-
 		std::wstring wsInPath = sFolderPath;
 		std::wstring wsOutPath = str2unicode(options.getString("backup_path"), nCCP) + L"\\"
 			+ sArchiveName + L"_" + (nBackupMode ? L"diff" : L"full");
-
-		//std::string sCommand =
-		//	options.getString("rar_path") + " a "
-		//	+ "\"" + sOutPath + "\" "		// out path
-		//	+ "\"" + sInPath + "\" "		// in path
-		//	+ options.getString("rar_argum");
-		//if (bFlag) {
-		//	sCommand += " -r-";
-		//}
 
 		std::wstring wsCommand =
 			str2unicode(options.getString("rar_path"), nCCP) + L" a "
@@ -297,6 +284,14 @@ int wmain(int argc, wchar_t* argv[]) {
 			+ str2unicode(options.getString("rar_argum"), nCCP);
 		if (bFlag) {
 			wsCommand += L" -r-";
+		}
+
+		if (nBackupMode == 0) {
+			wsCommand += L" -m5 -ac";
+		}
+		else if (nBackupMode == 1) {
+			wsCommand += L" -m4 -ao";
+
 		}
 
 		Log.d(L"rarEmailPwd.main", wsCommand);

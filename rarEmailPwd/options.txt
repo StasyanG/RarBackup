@@ -20,7 +20,7 @@ diff_keep_n_days=7
 full_keep_n_days=14
 
 # Path to target folder
-backup_path=D:\backups
+backup_path=Q:\backups
 
 # Path to WinRAR executable
 rar_path="F:\Program Files\WinRAR\Rar.exe"
