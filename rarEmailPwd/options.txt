@@ -20,13 +20,13 @@ diff_keep_n_days=7
 full_keep_n_days=14
 
 # Path to target folder
-backup_path=Q:\backups
+backup_path=D:\backups
 
 # Path to WinRAR executable
 rar_path="F:\Program Files\WinRAR\Rar.exe"
 
 # WinRAR argument list to start WinRAR with
-rar_argum=-ag_DD_M_YYYY_NN -ep2 -r -t -rr5p -v1g
+rar_argum=-ag_DD_M_YYYY_NN -ep2 -r -t -rr5p -v1g -ed
 
 # Length of random password used to encrypt archives
 pwd_length=9

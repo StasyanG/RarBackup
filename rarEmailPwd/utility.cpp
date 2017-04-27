@@ -1,6 +1,6 @@
 #include "utility.h"
 
-std::wstring str2unicode(const std::string &str, const UINT &encoding) {
+std::wstring strConvert(const std::string &str, const UINT &encoding) {
 	int size_needed = MultiByteToWideChar(encoding, 0, &str[0], (int)str.size(), NULL, 0);
 	std::wstring wstrTo(size_needed, 0);
 	MultiByteToWideChar(encoding, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
@@ -58,10 +58,11 @@ std::string prettyFSString(std::ifstream::pos_type nFilesize) {
 }
 
 std::string prettyTimeString(int secs) {
-	int nHours = (int)(secs / 3600);
-	int nMinutes = (int)((secs - 3600 * nHours) / 60);
-	int nSeconds = (int)((secs - 3600 * nHours - 60 * nMinutes));
-	std::string sDuration = std::to_string(nHours) + "h " + std::to_string(nMinutes) + "m " + std::to_string(nSeconds) + "s";
+	int nDays = (int)(secs / 3600 / 24);
+	int nHours = (int)((secs - nDays * 3600 * 24) / 3600);
+	int nMinutes = (int)((secs - nDays * 3600 * 24 - nHours * 3600) / 60);
+	int nSeconds = (int)((secs - nDays * 3600 * 24 - nHours * 3600 - nMinutes * 60));
+	std::string sDuration = std::to_string(nDays) + "d" + std::to_string(nHours) + "h" + std::to_string(nMinutes) + "m" + std::to_string(nSeconds) + "s";
 	return sDuration;
 }
 
@@ -254,7 +255,7 @@ DWORD exec(const std::wstring &wsCommand, std::wstring &wsResult, const UINT &nC
 		fFile.close();
 	}
 
-	wsResult = str2unicode(res, nCP);
+	wsResult = strConvert(res, nCP);
 
 	// remove temporary file
 	system(("del " + std::string(wsTmpFilename.begin(), wsTmpFilename.end())).c_str());

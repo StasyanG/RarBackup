@@ -9,7 +9,7 @@
 
 #include <windows.h>
 
-std::wstring str2unicode(const std::string &str, const UINT &encoding = CP_ACP);
+std::wstring strConvert(const std::string &str, const UINT &encoding = CP_ACP);
 std::wstring replace(std::wstring &s, const std::wstring &toReplace, const std::wstring &replaceWith);
 void stripQuotes(std::string &str);
 std::string prettyFSString(std::ifstream::pos_type nFilesize);

@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <stdio.h>
 #include <algorithm>
-#include <unordered_set>
+#include <forward_list>
 
 #include <windows.h>
 
@@ -22,7 +22,7 @@
 
 //TODO: notifications
 
-void getFolders(std::unordered_set<std::wstring> &folders, std::string root_folder_path, const UINT &encoding);
+void getFolders(std::string sDirsListPath, std::forward_list<std::wstring> &folders, const UINT &encoding, Logger &Log);
 std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding);
 int SendPwd(Logger &Log, std::string smtp_host, std::string username, std::string password, std::string sendTo,
 	std::string outFile, std::string pwd, std::string time1, std::string time2, std::string duration, std::string fSize, const UINT &encoding);
@@ -35,6 +35,9 @@ int wmain(int argc, wchar_t* argv[]) {
 	_setmode(_fileno(stderr), _O_U16TEXT);
 	UINT nCCP = GetConsoleOutputCP();
 	int nWCP = GetACP();
+
+	null_wcodecvt wcodec(1);
+	std::locale wloc(std::locale::classic(), &wcodec);
 
 	std::wstring sOptionsFile;
 	if (argc < 3) {
@@ -77,15 +80,15 @@ int wmain(int argc, wchar_t* argv[]) {
 	}
 
 	// Reading options for Logger
-	std::wstring sLogPath = str2unicode(options.getString("log_path"), nCCP);
+	std::wstring sLogPath = strConvert(options.getString("log_path"), nCCP);
 	if (sLogPath.empty()) {
 		sLogPath = L".\\logs";
 	}
-	std::wstring sLogInfoName = str2unicode(options.getString("log_info_name"), nCCP);
+	std::wstring sLogInfoName = strConvert(options.getString("log_info_name"), nCCP);
 	if (sLogInfoName.empty()) {
 		sLogInfoName = L"rarEmailPwd_log.log";
 	}
-	std::wstring sLogErrorName = str2unicode(options.getString("log_error_name"), nCCP);
+	std::wstring sLogErrorName = strConvert(options.getString("log_error_name"), nCCP);
 	if (sLogErrorName.empty()) {
 		sLogErrorName = L"rarEmailPwd_err.log";
 	}
@@ -118,31 +121,22 @@ int wmain(int argc, wchar_t* argv[]) {
 		return -1;
 	}
 
+	std::forward_list<std::wstring> errors;
+
 	Log.d(L"rarEmailPwd.main", L"Initialization successful!");
 
 	// Open fDirsList to get root folders
 	// then add all folders inside root folders as well as
 	// root folder to the set to process
-	std::unordered_set<std::wstring> set_of_folders;
-	std::wifstream fDirsList;
-	fDirsList.open(options.getString("dirs_list_path").c_str());
-	if (fDirsList.is_open())
-	{
-		std::wstring line;
-		while (getline(fDirsList, line)) {
-			set_of_folders.insert(line + L"\\*");
-			getFolders(set_of_folders, std::string(line.begin(), line.end()), nWCP);
-		}
-		fDirsList.close();
-	}
+	std::forward_list<std::wstring> folders;
+	getFolders(options.getString("dirs_list_path"), folders, nWCP, Log);
+	folders.reverse();
 
 	std::wstring sBackupList = L"backup_list.txt";
 	// Write UTF_BOM\r\n in the beginning of the file
 	// to prevent the bug when first folder written to file
 	// gets 2 full backups instead of 1 full + 1 diff
 	// AND to create better view of the file
-	null_wcodecvt wcodec(1);
-	std::locale wloc(std::locale::classic(), &wcodec);
 	std::wofstream fBackupList;
 	fBackupList.imbue(wloc);
 	fBackupList.open(
@@ -156,7 +150,7 @@ int wmain(int argc, wchar_t* argv[]) {
 	}
 
 	std::size_t i = 1;
-	for (std::wstring sFolderPath : set_of_folders) {
+	for (std::wstring sFolderPath : folders) {
 
 		time_t time_start;
 		time(&time_start);
@@ -167,7 +161,6 @@ int wmain(int argc, wchar_t* argv[]) {
 			bFlag = true;
 			sFolderPath = sFolderPath.substr(0, sFolderPath.length() - 1);
 		}
-		Log.d(L"rarEmailPwd.main", sFolderPath);
 
 		// Constructing archive name
 		size_t pos = sFolderPath.find(L"\\", 2);
@@ -180,14 +173,10 @@ int wmain(int argc, wchar_t* argv[]) {
 		replace(sFolder, L" ", L"_");
 		std::wstring sArchiveName = sIP + L"_" + sDisk + L"_" + sFolder;
 
-		std::wcout << sArchiveName << std::endl;
-
 		// Check the last backup date
 		// initialize the mode (full/diff backup)
 		int nBackupMode = -1; // 0 - full, diff - 1
-
-		null_wcodecvt wcodec(1);
-		std::locale wloc(std::locale::classic(), &wcodec);
+		double n_secs = 0;
 
 		std::wifstream fBackupList;
 		fBackupList.imbue(wloc);
@@ -209,8 +198,8 @@ int wmain(int argc, wchar_t* argv[]) {
 					time_t now;
 					time(&now);
 					time_t dt = mktime(date);
-					double seconds = difftime(now, dt);
-					n_days = (int)seconds / 60 / 60 / 24;
+					n_secs = difftime(now, dt);
+					n_days = (int)n_secs / 3600 / 24;
 					if (sBackupMode == L"full") {
 						n_full_days = n_days;
 					}
@@ -256,14 +245,14 @@ int wmain(int argc, wchar_t* argv[]) {
 		std::wstring sForfiles, wsResult;
 		std::string sResult;
 		if (nBackupMode == 0) {
-			sForfiles = L"forfiles.exe /p " + str2unicode(options.getString("backup_path"), nCCP) +
-				L" /s /m " + sArchiveName + L"_full_*.rar /d -" + str2unicode(options.getString("full_keep_n_days"), nCCP)
+			sForfiles = L"forfiles.exe /p " + strConvert(options.getString("backup_path"), nCCP) +
+				L" /s /m " + sArchiveName + L"_full_*.rar /d -" + strConvert(options.getString("full_keep_n_days"), nCCP)
 				+ L" /c \"cmd /c del /q /f @file\"";
 			Log.d(L"rarEmailPwd.main", sForfiles);
 		}
 		else if (nBackupMode == 1) {
-			sForfiles = L"forfiles.exe /p " + str2unicode(options.getString("backup_path"), nCCP) +
-				L" /s /m " + sArchiveName + L"_diff_*.rar /d -" + str2unicode(options.getString("diff_keep_n_days"), nCCP)
+			sForfiles = L"forfiles.exe /p " + strConvert(options.getString("backup_path"), nCCP) +
+				L" /s /m " + sArchiveName + L"_diff_*.rar /d -" + strConvert(options.getString("diff_keep_n_days"), nCCP)
 				+ L" /c \"cmd /c del /q /f @file\"";
 			Log.d(L"rarEmailPwd.main", sForfiles);
 		}
@@ -274,14 +263,14 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 
 		std::wstring wsInPath = sFolderPath;
-		std::wstring wsOutPath = str2unicode(options.getString("backup_path"), nCCP) + L"\\"
+		std::wstring wsOutPath = strConvert(options.getString("backup_path"), nCCP) + L"\\"
 			+ sArchiveName + L"_" + (nBackupMode ? L"diff" : L"full");
 
 		std::wstring wsCommand =
-			str2unicode(options.getString("rar_path"), nCCP) + L" a "
+			strConvert(options.getString("rar_path"), nCCP) + L" a "
 			+ L"\"" + wsOutPath + L".rar\" "	// out path
 			+ L"\"" + wsInPath + L"\" "			// in path
-			+ str2unicode(options.getString("rar_argum"), nCCP);
+			+ strConvert(options.getString("rar_argum"), nCCP);
 		if (bFlag) {
 			wsCommand += L" -r-";
 		}
@@ -298,17 +287,23 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		// Adding password for archive encryption
 		std::string sPassword = randomStrGen(options.getInt("pwd_length"));
-		wsCommand = wsCommand + str2unicode(" -hp\"" + sPassword + "\"", nCCP);
+		wsCommand = wsCommand + strConvert(" -hp\"" + sPassword + "\"", nCCP);
 
 		/// TODO: REMOVE AFTER TESTING
 		//Log.d(L"rarEmailPwd.main", wsCommand);
+
+		Log.d(L"rarEmailPwd.main", L"Starting WinRAR. WinRAR logs will be available in separate files.");
+
+		
+		std::wstring sWinRARLogAllName = L"WinRAR_" + sArchiveName + L"_" + (nBackupMode ? L"diff" : L"full") + L"_all.log";
+		Logger WinRARLog(sLogPath, sWinRARLogAllName, sWinRARLogAllName, bVerbose, nCCP);
 
 		DWORD nResult = exec(wsCommand, wsResult, nCCP);
 		replace(wsResult, L"\n", L"\r\n");
 		wsResult = L"\r\n" + wsResult;
 
+		WinRARLog.d(L"rarEmailPwd.main", wsResult);
 		if (nResult == 0) {
-			Log.d(L"rarEmailPwd.main", wsResult);
 			Log.d(L"rarEmailPwd.main", L"Archivation successful");
 
 			// Calcalating size of the archive (total)
@@ -318,10 +313,10 @@ int wmain(int argc, wchar_t* argv[]) {
 			time_t time_end;
 			time(&time_end);
 			double secs = difftime(time_end, time_start);
-			std::string sDurations = prettyTimeString(secs);
+			std::string sDuration = prettyTimeString(secs);
 			
-			Log.d(L"rarEmailPwd.main", L"Filesize: " + str2unicode(sFilesize, nCCP));
-			Log.d(L"rarEmailPwd.main", L"Duration: " + str2unicode(sDurations, nCCP));
+			Log.d(L"rarEmailPwd.main", L"Filesize: " + strConvert(sFilesize, nCCP));
+			Log.d(L"rarEmailPwd.main", L"Duration: " + strConvert(sDuration, nCCP));
 
 			// Sending email
 			if (nSendEmails == 2) {
@@ -334,15 +329,13 @@ int wmain(int argc, wchar_t* argv[]) {
 					std::string(wsOutPath.begin(), wsOutPath.end()) + " \n " + sPassword,
 					sTimeStart,
 					getTime(0),
-					sDurations,
+					sDuration,
 					sFilesize,
 					nCCP)) {
 					Log.d(L"rarEmailPwd.sendEmail", L"ERROR Email was not sent. See error logs.");
 				}
 			}
 
-			null_wcodecvt wcodec(1);
-			std::locale wloc(std::locale::classic(), &wcodec);
 			std::wofstream fBackupList;
 			fBackupList.imbue(wloc);
 			fBackupList.open(
@@ -351,7 +344,7 @@ int wmain(int argc, wchar_t* argv[]) {
 			);
 			if (fBackupList.is_open())
 			{
-				std::wstring l = sArchiveName + L" " + str2unicode(getTime(2), nCCP);
+				std::wstring l = sArchiveName + L" " + strConvert(getTime(2), nCCP);
 				if (nBackupMode == 0) {
 					l += L" full";
 				}
@@ -365,7 +358,6 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		}
 		else {
-			Log.d(L"rarEmailPwd.main", wsResult);
 			Log.d(L"rarEmailPwd.main", L"Archivation failed");
 		}
 		std::wcout << std::endl;
@@ -375,33 +367,45 @@ int wmain(int argc, wchar_t* argv[]) {
 	return 0;
 }
 
-void getFolders(std::unordered_set<std::wstring> &folders, std::string root_folder_path, const UINT &encoding) {
+void getFolders(std::string sDirsListPath, std::forward_list<std::wstring> &folders, const UINT &encoding, Logger &Log) {
 
 	// remember locale
 	std::string oldLocale = setlocale(LC_ALL, NULL);
 	// set current environment locale
 	setlocale(LC_ALL, "");
 
-	DIR *dir = opendir(root_folder_path.c_str());
+	std::wifstream fDirsList;
+	fDirsList.open(sDirsListPath.c_str());
+	if (fDirsList.is_open()) {
+		std::wstring line;
+		while (getline(fDirsList, line)) {
+			
+			std::string sRootFolderPath = std::string(line.begin(), line.end());
 
-	struct dirent *entry = readdir(dir);
-
-	while (entry != NULL)
-	{
-		if (entry->d_type == DT_DIR
-			&& strcmp(entry->d_name, ".")
-			&& strcmp(entry->d_name, "..")) {
-			std::wstring sEncodedName = str2unicode(root_folder_path, encoding) + L"\\" + str2unicode(entry->d_name, encoding);
-			folders.insert(sEncodedName);
+			DIR *dir = opendir(sRootFolderPath.c_str());
+			if (dir) {
+				folders.push_front(line + L"\\*");
+				struct dirent *entry = readdir(dir);
+				while (entry != NULL) {
+					if (entry->d_type == DT_DIR
+						&& strcmp(entry->d_name, ".")
+						&& strcmp(entry->d_name, "..")) {
+						std::wstring sEncodedName = strConvert(sRootFolderPath, encoding) + L"\\" + strConvert(entry->d_name, encoding);
+						folders.push_front(sEncodedName);
+					}
+					entry = readdir(dir);
+				}
+				closedir(dir);
+			}
+			else {
+				Log.e(L"rarEmailPwd.main", L"ERROR root folder does not exist " + strConvert(sRootFolderPath, encoding));
+			}
 		}
-
-		entry = readdir(dir);
+		fDirsList.close();
 	}
 
 	// restore locale
 	setlocale(LC_ALL, oldLocale.c_str());
-
-	closedir(dir);
 }
 
 std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding) {
@@ -423,8 +427,8 @@ std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, 
 			&& strcmp(entry->d_name, "..")) {
 			// if filename in backups folder begins with archiveName then get its size
 			// because it is the part of the archive
-			if (hasPrefix(str2unicode(entry->d_name), sArchiveName)) {
-				nTotalSize += filesize(str2unicode(sBackupFolder) + L"\\" + str2unicode(entry->d_name));
+			if (hasPrefix(strConvert(entry->d_name), sArchiveName)) {
+				nTotalSize += filesize(strConvert(sBackupFolder) + L"\\" + strConvert(entry->d_name));
 			}
 		}
 
@@ -479,8 +483,8 @@ int SendPwd(Logger &Log, std::string smtp_host, std::string username, std::strin
 		//	sMessage += line + "\r\n";
 		//}
 
-		Log.e(L"rarEmailPwd.sendEmail", L"Error: " + str2unicode(e.GetErrorText(), encoding));
-		//Log.e(L"rarEmailPwd.sendEmail", L"Unsent message:\r\n\r\n" + str2unicode(sMessage, encoding) + L"\r\n");
+		Log.e(L"rarEmailPwd.sendEmail", L"Error: " + strConvert(e.GetErrorText(), encoding));
+		//Log.e(L"rarEmailPwd.sendEmail", L"Unsent message:\r\n\r\n" + strConvert(sMessage, encoding) + L"\r\n");
 		bError = true;
 	}
 

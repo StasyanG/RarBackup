@@ -35,7 +35,7 @@ const bool Logger::isInitialized() {
 }
 
 void Logger::d(std::wstring TAG, std::wstring msg) {
-	std::wstring to_print = L"[" + str2unicode(getTime(0), m_uiCP) + L"] INF | " + TAG + L" | " + msg;
+	std::wstring to_print = L"[" + strConvert(getTime(0), m_uiCP) + L"] INF | " + TAG + L" | " + msg;
 	this->m_fFileInf << /*UTF_BOM <<*/ to_print << wendl;
 	if (m_bVerbose) {
 		std::wcout << to_print << std::endl;
@@ -43,7 +43,7 @@ void Logger::d(std::wstring TAG, std::wstring msg) {
 }
 
 void Logger::e(std::wstring TAG, std::wstring msg) {
-	std::wstring to_print = L"[" + str2unicode(getTime(0), m_uiCP) + L"] ERR | " + TAG + L" | " + msg;
+	std::wstring to_print = L"[" + strConvert(getTime(0), m_uiCP) + L"] ERR | " + TAG + L" | " + msg;
 	this->m_fFileErr << /*UTF_BOM <<*/ to_print << wendl;
 	if (m_bVerbose) {
 		std::wcout << to_print << std::endl;
