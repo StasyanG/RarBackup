@@ -1,0 +1,57 @@
+#___LOGGING___#
+log_path=.\logs
+# DEFAULT = .\logs
+log_info_name=rarEmailPwd_log.log
+# DEFAULT = rarEmailPwd_log.log
+log_error_name=rarEmailPwd_err.log
+# DEFAULT = rarEmailPwd_err.log
+verbose=0
+# DEFAULT = 0
+
+#___BACKUP OPTIONS___#
+
+# Path to file which contains list of root folders to process
+dirs_list_path=dirsList.txt
+
+# Schedule options
+diff_n_days=0
+full_n_days=7
+diff_keep_n_days=7
+full_keep_n_days=14
+
+# Path to target folder
+backup_path=D:\backups
+
+# Path to WinRAR executable
+rar_path="F:\Program Files\WinRAR\Rar.exe"
+
+# WinRAR argument list to start WinRAR with
+rar_argum=-ag_DD_M_YYYY_NN -ep2 -r -t -rr5p -v1g -ed
+
+# Length of random password used to encrypt archives
+pwd_length=9
+
+#___EMAIL OPTIONS___#
+# 1 = do not send, 2 = send
+send_emails=1
+
+# SMTP Parameters
+smtp_host=123.456.78.9
+smtp_user=user@mailserver.com
+smtp_pass=123456789
+smtp_emailTo=receiver@mail.com
+smtp_emailAdmin=admin@mail.com
+
+#___NOTIFICATION OPTIONS___#
+
+# E-mail notifications for Admin
+# 1 - no logs
+# 2 - only errors
+# 3 - all logs
+notify_level=1
+
+#___OTHER OPTIONS___#
+# NOT WORKING
+
+# Number of tries for each root folder
+num_of_tries=5
