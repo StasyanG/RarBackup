@@ -19,8 +19,9 @@
 #include "CSmtp\CSmtp.h"
 #include "Logger.h"
 #include "Options.h"
+#include "Report.h"
 
-//TODO: notifications
+//TODO: reports sending
 
 void getFolders(std::string sDirsListPath, std::forward_list<std::wstring> &folders, const UINT &encoding, Logger &Log);
 std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding);
@@ -121,7 +122,13 @@ int wmain(int argc, wchar_t* argv[]) {
 		return -1;
 	}
 
-	std::forward_list<std::wstring> errors;
+
+	// Create a folder for reports inside logs folder
+	std::wstring sReportPath = sLogPath + L"\\reports";
+	std::wstring s = L"if not exist \"" + sReportPath + L"\" mkdir \"" + sReportPath + L"\"";
+	system(std::string(s.begin(), s.end()).c_str());
+	// Create Report var
+	Report report;
 
 	Log.d(L"rarEmailPwd.main", L"Initialization successful!");
 
@@ -268,9 +275,12 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		std::wstring wsCommand =
 			strConvert(options.getString("rar_path"), nCCP) + L" a "
-			+ L"\"" + wsOutPath + L".rar\" "	// out path
-			+ L"\"" + wsInPath + L"\" "			// in path
+			+ L"\"" + wsOutPath + L".tmp\" "	// out path
+			+ L"\"" + wsInPath + L"\" "				// in path
 			+ strConvert(options.getString("rar_argum"), nCCP);
+		// add .tmp in the end to calculate resulting filesize later,
+		// .tmp will be replaced with .rar after completion
+
 		if (bFlag) {
 			wsCommand += L" -r-";
 		}
@@ -302,6 +312,11 @@ int wmain(int argc, wchar_t* argv[]) {
 		replace(wsResult, L"\n", L"\r\n");
 		wsResult = L"\r\n" + wsResult;
 
+		time_t time_end;
+		time(&time_end);
+		double secs = difftime(time_end, time_start);
+		std::string sDuration = prettyTimeString(secs);
+
 		WinRARLog.d(L"rarEmailPwd.main", wsResult);
 		if (nResult == 0) {
 			Log.d(L"rarEmailPwd.main", L"Archivation successful");
@@ -309,11 +324,6 @@ int wmain(int argc, wchar_t* argv[]) {
 			// Calcalating size of the archive (total)
 			std::ifstream::pos_type nFilesize = calculateTotalSizeOfArchive(options.getString("backup_path"), sArchiveName, nCCP);
 			std::string sFilesize = prettyFSString(nFilesize);
-
-			time_t time_end;
-			time(&time_end);
-			double secs = difftime(time_end, time_start);
-			std::string sDuration = prettyTimeString(secs);
 			
 			Log.d(L"rarEmailPwd.main", L"Filesize: " + strConvert(sFilesize, nCCP));
 			Log.d(L"rarEmailPwd.main", L"Duration: " + strConvert(sDuration, nCCP));
@@ -356,12 +366,41 @@ int wmain(int argc, wchar_t* argv[]) {
 				fBackupList.close();
 			}
 
+			// Add report item
+			ReportItem item = {
+				!nResult,
+				sArchiveName,
+				(nBackupMode == 0 ? L"full" : L"diff"),
+				strConvert(sTimeStart, nCCP),
+				strConvert(getTime(0), nCCP),
+				strConvert(sDuration, nCCP),
+				strConvert(sFilesize, nCCP)
+			};
+			report.addItem(item);
+
 		}
 		else {
 			Log.d(L"rarEmailPwd.main", L"Archivation failed");
+
+			// Add report item
+			ReportItem item = {
+				!nResult,
+				sArchiveName,
+				(nBackupMode == 0 ? L"full" : L"diff"),
+				strConvert(sTimeStart, nCCP),
+				strConvert(getTime(0), nCCP),
+				strConvert(sDuration, nCCP),
+				L"-"
+			};
+			report.addItem(item);
 		}
+
 		std::wcout << std::endl;
 		i++;
+	}
+
+	if (options.getInt("notify_level") == 2 || options.getInt("notify_level") == 3) {
+		report.createReport(sReportPath + L"\\" + L"report_" + strConvert(getTime(3), nCCP), strConvert(getTime(2), nCCP));
 	}
 
 	return 0;
@@ -428,7 +467,21 @@ std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, 
 			// if filename in backups folder begins with archiveName then get its size
 			// because it is the part of the archive
 			if (hasPrefix(strConvert(entry->d_name), sArchiveName)) {
-				nTotalSize += filesize(strConvert(sBackupFolder) + L"\\" + strConvert(entry->d_name));
+				std::wstring sName = strConvert(entry->d_name);
+				std::wstring sExtension = sName.substr(sName.find_last_of(L".") + 1);
+				std::wstring sNewFilename = sName.substr(0, sName.find_last_of(L"."));
+				sNewFilename += L".rar";
+				if (sExtension == L"tmp") {
+					nTotalSize += filesize(strConvert(sBackupFolder) + L"\\" + strConvert(entry->d_name));
+					
+					sName = strConvert(sBackupFolder) + L"\\" + sName;
+					sNewFilename = sNewFilename;
+
+					// remove .tmp from the end of filename
+					std::wstring wsCommand = L"rename \"" + sName + L"\" \"" + sNewFilename + L"\"";
+					std::wstring wsResult;
+					exec(wsCommand, wsResult, encoding);
+				}
 			}
 		}
 

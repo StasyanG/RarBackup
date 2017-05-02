@@ -190,6 +190,22 @@ std::string getTime(int f)
 		else
 			cur_time.append(buf);
 	}
+	else if (f == 3) { // only date in format YYYY_MM_DD
+		_itoa(now->tm_year + 1900, buf, 10);
+		cur_time.append(buf);
+		cur_time.append("_");
+		_itoa(now->tm_mon + 1, buf, 10);
+		if (strlen(buf) == 1)
+			cur_time.append("0" + std::string(buf));
+		else
+			cur_time.append(buf);
+		cur_time.append("_");
+		_itoa(now->tm_mday, buf, 10);
+		if (strlen(buf) == 1)
+			cur_time.append("0" + std::string(buf));
+		else
+			cur_time.append(buf);
+	}
 
 	return cur_time;
 }//getTime

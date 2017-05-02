@@ -132,6 +132,7 @@
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Options.cpp" />
+    <ClCompile Include="Report.cpp" />
     <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +140,7 @@
     <ClInclude Include="Csmtp\CSmtp.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Options.h" />
+    <ClInclude Include="Report.h" />
     <ClInclude Include="utility.h" />
   </ItemGroup>
   <ItemGroup>
