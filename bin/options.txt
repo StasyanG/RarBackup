@@ -26,7 +26,7 @@ backup_path=D:\backups
 rar_path="F:\Program Files\WinRAR\Rar.exe"
 
 # WinRAR argument list to start WinRAR with
-rar_argum=-ag_DD_M_YYYY_NN -ep2 -r -t -rr5p -v1g -ed
+rar_argum=-ag_DD_MM_YYYY_NN -ep2 -r -t -rr5p -v1g -ed
 
 # Length of random password used to encrypt archives
 pwd_length=9
@@ -44,11 +44,11 @@ smtp_emailAdmin=admin@mail.com
 
 #___NOTIFICATION OPTIONS___#
 
-# E-mail notifications for Admin
-# 1 - no logs
-# 2 - only errors
-# 3 - all logs
-notify_level=1
+# Create reports for Admin
+# 1 - don't create reports
+# 2 - create and don't send
+# 3 - create and send
+notify_level=2
 
 #___OTHER OPTIONS___#
 # NOT WORKING
