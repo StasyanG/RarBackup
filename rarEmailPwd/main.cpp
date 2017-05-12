@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <forward_list>
+#include <sstream>
 
 #include <windows.h>
 
@@ -25,8 +26,8 @@
 
 void getFolders(std::string sDirsListPath, std::forward_list<std::wstring> &folders, const UINT &encoding, Logger &Log);
 std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding);
-int SendPwd(Logger &Log, std::string smtp_host, std::string username, std::string password, std::string sendTo,
-	std::string outFile, std::string pwd, std::string time1, std::string time2, std::string duration, std::string fSize, const UINT &encoding);
+int SendEmail(std::string sSmtpHost, std::string sSmtpUser, std::string sSmtpPassword, std::string sSendTo,
+				std::string sTitle, std::string sMessage, std::forward_list<std::wstring>& attachments, Logger &Log, const UINT &encoding);
 
 int wmain(int argc, wchar_t* argv[]) {
 	srand(time(NULL));
@@ -330,19 +331,24 @@ int wmain(int argc, wchar_t* argv[]) {
 
 			// Sending email
 			if (nSendEmails == 2) {
-				if (SendPwd(Log,
+				std::string sMessage = std::string(wsOutPath.begin(), wsOutPath.end()) + " \n " + sPassword + "\n";
+
+				sMessage += "Time (start): " + sTimeStart + "\n";
+				sMessage += "Time (finish): " + getTime(0) + "\n";
+				sMessage += "Duration: " + sDuration + "\n";
+				sMessage += "Filesize: " + sFilesize + "\n";
+
+				if (SendEmail(
 					options.getString("smtp_host"),
 					options.getString("smtp_user"),
 					options.getString("smtp_pass"),
 					options.getString("smtp_emailTo"),
 					std::string(sArchiveName.begin(), sArchiveName.end()) + " " + (nBackupMode == 0 ? "FULL" : "DIFF"),
-					std::string(wsOutPath.begin(), wsOutPath.end()) + " \n " + sPassword,
-					sTimeStart,
-					getTime(0),
-					sDuration,
-					sFilesize,
+					sMessage,
+					std::forward_list<std::wstring>(),
+					Log,
 					nCCP)) {
-					Log.d(L"rarEmailPwd.sendEmail", L"ERROR Email was not sent. See error logs.");
+					Log.d(L"rarEmailPwd.sendEmail", L"ERROR Email was not sent.");
 				}
 			}
 
@@ -400,7 +406,29 @@ int wmain(int argc, wchar_t* argv[]) {
 	}
 
 	if (options.getInt("notify_level") == 2 || options.getInt("notify_level") == 3) {
-		report.createReport(sReportPath + L"\\" + L"report_" + strConvert(getTime(3), nCCP), strConvert(getTime(2), nCCP));
+		std::wstring sReportFilename = sReportPath + L"\\" + L"report_" + strConvert(getTime(3), nCCP) + L".html";
+		report.createReport(sReportFilename, strConvert(getTime(2), nCCP));
+
+		std::forward_list<std::wstring> attachments;
+		attachments.push_front(sReportFilename);
+
+		std::string sMessage = "Your report is in attachement\n";
+
+		if (options.getInt("notify_level") == 3) {
+			if (SendEmail(
+				options.getString("smtp_host"),
+				options.getString("smtp_user"),
+				options.getString("smtp_pass"),
+				options.getString("smtp_emailAdmin"),
+				"RarBackup Report " + getTime(3),
+				sMessage,
+				attachments,
+				Log,
+				nCCP)) {
+				Log.d(L"rarEmailPwd.sendEmail", L"ERROR Report Email was not sent.");
+			}
+		}
+		
 	}
 
 	return 0;
@@ -496,8 +524,8 @@ std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, 
 	return nTotalSize;
 }
 
-int SendPwd(Logger &Log, std::string smtp_host, std::string username, std::string password, std::string sendTo, 
-	std::string title, std::string msg, std::string time1, std::string time2, std::string duration, std::string fSize, const UINT &encoding = CP_ACP)
+int SendEmail(std::string sSmtpHost, std::string sSmtpUser, std::string sSmtpPassword, std::string sSendTo, 
+	std::string sTitle, std::string sMessage, std::forward_list<std::wstring>& attachments, Logger &Log, const UINT &encoding = CP_ACP)
 {
 	Log.d(L"rarEmailPwd.sendEmail", L"Sending email...");
 	CSmtp mail;
@@ -505,30 +533,39 @@ int SendPwd(Logger &Log, std::string smtp_host, std::string username, std::strin
 	try
 	{
 
-		mail.SetSMTPServer(smtp_host.c_str(), 25);
-		mail.SetLogin(username.c_str());
-		mail.SetPassword(password.c_str());
-		mail.SetSenderName(username.c_str());
-		mail.SetSenderMail(username.c_str());
-		mail.SetReplyTo(username.c_str());
-		mail.SetSubject(title.c_str());
-		mail.AddRecipient(sendTo.c_str());
+		mail.SetSMTPServer(sSmtpHost.c_str(), 25);
+		mail.SetLogin(sSmtpUser.c_str());
+		mail.SetPassword(sSmtpPassword.c_str());
+		mail.SetSenderName(sSmtpUser.c_str());
+		mail.SetSenderMail(sSmtpUser.c_str());
+		mail.SetReplyTo(sSmtpUser.c_str());
+		mail.SetSubject(sTitle.c_str());
+		mail.AddRecipient(sSendTo.c_str());
 		mail.SetXPriority(XPRIORITY_NORMAL);
-		mail.SetXMailer("Emailer Program");
-		mail.AddMsgLine(msg.c_str());
-		std::string str = "Time (start): " + time1;
-		mail.AddMsgLine(str.c_str());
-		str = "Time (finish): " + time2;
-		mail.AddMsgLine(str.c_str());
-		str = "Duration: " + duration;
-		mail.AddMsgLine(str.c_str());
-		str = "Filesize: " + fSize;
-		mail.AddMsgLine(str.c_str());
+		mail.SetXMailer("RarBackup Emailer (CSmtp)");
 
+		// Create message
+		std::stringstream ss(sMessage);
+		std::string to;
+
+		if (sMessage.c_str() != NULL)
+		{
+			while (std::getline(ss, to, '\n')) {
+				mail.AddMsgLine(to.c_str());
+			}
+		}
+
+		// Adding attachments
+		for (std::wstring sAttachmentFile : attachments) {
+			mail.AddAttachment(std::string(sAttachmentFile.begin(), sAttachmentFile.end()).c_str());
+		}
+
+		// Send email
 		mail.Send();
 	}
 	catch (ECSmtp e)
 	{
+		// code to get unsent message
 		//std::string sMessage = "";
 		//int nLines = mail.GetMsgLines();
 		//for (int i = 0; i < nLines; i++) {

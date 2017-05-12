@@ -27,7 +27,7 @@ void Report::createReport(const std::wstring &sFilename, const std::wstring sTim
 	std::wofstream fReport;
 	fReport.imbue(wloc);
 	fReport.open(
-		sFilename + L".html",
+		sFilename,
 		std::ios::out | std::ios::binary | std::ios::app
 	);
 	if (fReport.is_open())
