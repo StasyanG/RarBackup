@@ -1,12 +1,10 @@
 #pragma once
-
-#include <iostream>
+#include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <time.h>
-#include <algorithm>
 #include <vector>
-
 #include <windows.h>
 
 std::wstring strConvert(const std::string &str, const UINT &encoding = CP_ACP);

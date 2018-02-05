@@ -1,10 +1,10 @@
 #pragma once
-#include <string>
 #include <forward_list>
+#include <string>
 #include <time.h>
 
 struct ReportItem {
-	bool bResult;
+	int bResult;
 	std::wstring sFolderPath;
 	std::wstring sMode;
 	std::wstring sTimeStart;
@@ -23,4 +23,3 @@ public:
 	void addItem(ReportItem &new_item);
 	void createReport(const std::wstring &sFilename, const std::wstring sTimeReport);
 };
-

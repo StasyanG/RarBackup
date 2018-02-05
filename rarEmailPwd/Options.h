@@ -14,4 +14,3 @@ public:
 	std::string getString(std::string opt_name);
 	int getInt(std::string opt_name);
 };
-

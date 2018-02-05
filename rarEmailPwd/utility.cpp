@@ -1,5 +1,36 @@
 #include "utility.h"
 
+#if defined(_MSC_VER) && _MSC_VER < 1900
+
+#define snprintf c99_snprintf
+#define vsnprintf c99_vsnprintf
+
+__inline int c99_vsnprintf(char *outBuf, size_t size, const char *format, va_list ap)
+{
+	int count = -1;
+
+	if (size != 0)
+		count = _vsnprintf_s(outBuf, size, _TRUNCATE, format, ap);
+	if (count == -1)
+		count = _vscprintf(format, ap);
+
+	return count;
+}
+
+__inline int c99_snprintf(char *outBuf, size_t size, const char *format, ...)
+{
+	int count;
+	va_list ap;
+
+	va_start(ap, format);
+	count = c99_vsnprintf(outBuf, size, format, ap);
+	va_end(ap);
+
+	return count;
+}
+
+#endif
+
 std::wstring strConvert(const std::string &str, const UINT &encoding) {
 	int size_needed = MultiByteToWideChar(encoding, 0, &str[0], (int)str.size(), NULL, 0);
 	std::wstring wstrTo(size_needed, 0);
@@ -77,7 +108,6 @@ std::string randomStrGen(int length) {
 	return result;
 }//randomStrGen
 
-
 struct tm* convertStrToTime(std::string timeStr, bool onlyDate = false) {
 	time_t t = time(0);
 	struct tm* date = localtime(&t);
@@ -110,7 +140,7 @@ std::string getTime(int f)
 	time_t t = time(0);
 	struct tm * now = localtime(&t);
 	char buf[25];
-	if (!f)
+	if (!f) // format: YYYY-MM-DD HH:MM:SS
 	{
 		// year
 		_itoa(now->tm_year + 1900, buf, 10);
@@ -156,7 +186,7 @@ std::string getTime(int f)
 		else
 			cur_time.append(buf);
 	}
-	else if (f == 1)
+	else if (f == 1) // format: YYYY_MM_DD_HHMMSS
 	{
 		_itoa(now->tm_year + 1900, buf, 10);
 		cur_time.append(buf);
@@ -174,7 +204,7 @@ std::string getTime(int f)
 		_itoa(now->tm_sec, buf, 10);
 		cur_time.append(buf);
 	}
-	else if (f == 2) { // only date in format YYYY-MM-DD
+	else if (f == 2) { // format: YYYY-MM-DD
 		_itoa(now->tm_year + 1900, buf, 10);
 		cur_time.append(buf);
 		cur_time.append("-");
@@ -190,7 +220,7 @@ std::string getTime(int f)
 		else
 			cur_time.append(buf);
 	}
-	else if (f == 3) { // only date in format YYYY_MM_DD
+	else if (f == 3) { // format: YYYY_MM_DD
 		_itoa(now->tm_year + 1900, buf, 10);
 		cur_time.append(buf);
 		cur_time.append("_");
@@ -209,7 +239,6 @@ std::string getTime(int f)
 
 	return cur_time;
 }//getTime
-
 
 int exec(const char* cmd, std::string &result) {
 	char buffer[128];
@@ -234,7 +263,6 @@ int exec(const char* cmd, std::string &result) {
 }//exec
 
 DWORD exec(const std::wstring &wsCommand, std::wstring &wsResult, const UINT &nCP) {
-
 	DWORD exit_code;
 
 	// we create temporary file to forward cmd output to it
@@ -249,7 +277,7 @@ DWORD exec(const std::wstring &wsCommand, std::wstring &wsResult, const UINT &nC
 
 	// start process
 	std::vector<WCHAR> V(wsExtendedCommand.length() + 1);
-	for (int i = 0; i< (int)wsExtendedCommand.length(); i++)
+	for (int i = 0; i < (int)wsExtendedCommand.length(); i++)
 		V[i] = wsExtendedCommand[i];
 	CreateProcessW(NULL, &V[0], 0, 0, FALSE, 0, 0, 0, &SI, &PI);
 	WaitForSingleObject(PI.hProcess, INFINITE);
@@ -275,21 +303,19 @@ DWORD exec(const std::wstring &wsCommand, std::wstring &wsResult, const UINT &nC
 
 	// remove temporary file
 	system(("del " + std::string(wsTmpFilename.begin(), wsTmpFilename.end())).c_str());
-
+	
 	return exit_code;
 }
 
-
 std::wifstream::pos_type filesize(std::wstring filename)
 {
-    std::wifstream in(filename, std::wifstream::ate | std::wifstream::binary);
+	std::wifstream in(filename, std::wifstream::ate | std::wifstream::binary);
 	return in.tellg();
 }
 
 bool hasPrefix(const std::wstring &s, const std::wstring &prefix) {
 	return (s.size() >= prefix.size()) && s.find(prefix) == 0;
 }
-
 
 std::wostream& wendl(std::wostream& out)
 {

@@ -1,4 +1,7 @@
+#include <codecvt>
+
 typedef std::codecvt<wchar_t, char, mbstate_t> null_wcodecvt_base;
+
 class null_wcodecvt : public null_wcodecvt_base
 {
 public:

@@ -1,7 +1,6 @@
 #include "Options.h"
-
-#include <string>
 #include <fstream>
+#include <string>
 
 Options::Options() {
 }
@@ -41,6 +40,6 @@ int Options::getInt(std::string opt_name) {
 			return (int)value;
 		}
 	}
-	
+
 	return NULL;
 }
