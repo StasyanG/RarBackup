@@ -19,7 +19,7 @@
 
 bool validateOptions(Options &options);
 int getFolders(std::string sDirsListPath, std::forward_list<std::wstring> &folders, const UINT &encoding, Logger &Log);
-std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding);
+std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding, Logger &Log);
 int SendEmail(std::string sSmtpHost, std::string sSmtpUser, std::string sSmtpPassword, std::string sSendTo,
 	std::string sTitle, std::string sMessage, std::forward_list<std::wstring>& attachments, Logger &Log, const UINT &encoding);
 
@@ -337,7 +337,7 @@ int wmain(int argc, wchar_t* argv[]) {
 			Log.d(L"rarEmailPwd.main", L"Archivation successful");
 
 			// Calcalating size of the archive (total)
-			std::ifstream::pos_type nFilesize = calculateTotalSizeOfArchive(options.getString("backup_path"), sArchiveName, nCCP);
+			std::ifstream::pos_type nFilesize = calculateTotalSizeOfArchive(options.getString("backup_path"), sArchiveName, nCCP, Log);
 			std::string sFilesize = prettyFSString(nFilesize);
 
 			Log.d(L"rarEmailPwd.main", L"Filesize: " + strConvert(sFilesize, nCCP));
@@ -519,13 +519,16 @@ int getFolders(std::string sDirsListPath, std::forward_list<std::wstring> &folde
 	return cnt;
 }
 
-std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding) {
+std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, std::wstring sArchiveName, const UINT &encoding, Logger &Log) {
 	std::wifstream::pos_type nTotalSize = 0;
 
 	// remember locale
 	std::string oldLocale = setlocale(LC_ALL, NULL);
 	// set current environment locale
 	setlocale(LC_ALL, "");
+
+	std::wstring tmpExt = L".tmp";
+	std::wstring rarExt = L".rar";
 
 	DIR *dir = opendir(sBackupFolder.c_str());
 
@@ -539,14 +542,18 @@ std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, 
 			// because it is the part of the archive
 			if (hasPrefix(strConvert(entry->d_name), sArchiveName)) {
 				std::wstring sName = strConvert(entry->d_name);
-				std::wstring sExtension = sName.substr(sName.find_last_of(L".") + 1);
-				std::wstring sNewFilename = sName.substr(0, sName.find_last_of(L"."));
-				sNewFilename += L".rar";
-				if (sExtension == L"tmp") {
-					nTotalSize += filesize(strConvert(sBackupFolder) + L"\\" + strConvert(entry->d_name));
+				if (hasSubstr(sName, tmpExt)) {
+					// Creating new name
+					std::wstring sNewFilename = sName.substr(0, sName.find(tmpExt));
+					if (sName.find(rarExt) != std::wstring::npos) {
+						std::wstring secondPart = sName.substr(sName.find(tmpExt) + tmpExt.size());
+						secondPart = secondPart.substr(0, secondPart.find(rarExt));
+						sNewFilename += secondPart;
+					}
+					sNewFilename += rarExt;
 
 					sName = strConvert(sBackupFolder) + L"\\" + sName;
-
+					nTotalSize += filesize(sName);
 					// remove .tmp from the end of filename
 					std::wstring wsCommand = L"rename \"" + sName + L"\" \"" + sNewFilename + L"\"";
 					std::wstring wsResult;

@@ -316,6 +316,12 @@ std::wifstream::pos_type filesize(std::wstring filename)
 bool hasPrefix(const std::wstring &s, const std::wstring &prefix) {
 	return (s.size() >= prefix.size()) && s.find(prefix) == 0;
 }
+bool hasSubstr(const std::wstring &s, const std::wstring &substr) {
+	if (s.size() >= substr.size())
+		return s.find(substr);
+	else
+		return false;
+}
 
 std::wostream& wendl(std::wostream& out)
 {

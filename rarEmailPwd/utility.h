@@ -23,5 +23,6 @@ DWORD exec(const std::wstring &wsCommand, std::wstring &wsResult, const UINT &nC
 
 std::wifstream::pos_type filesize(std::wstring filename);
 bool hasPrefix(const std::wstring &s, const std::wstring &prefix);
+bool hasSubstr(const std::wstring &s, const std::wstring &substr);
 
 std::wostream& wendl(std::wostream& out);
