@@ -538,33 +538,32 @@ std::wifstream::pos_type calculateTotalSizeOfArchive(std::string sBackupFolder, 
 	{
 		if (strcmp(entry->d_name, ".")
 			&& strcmp(entry->d_name, "..")) {
-			// if filename in backups folder begins with archiveName then get its size
-			// because it is the part of the archive
-			if (hasPrefix(strConvert(entry->d_name), sArchiveName)) {
-				std::wstring sName = strConvert(entry->d_name);
-				if (hasSubstr(sName, tmpExt)) {
-					// Creating new name
-					std::wstring sNewFilename = sName.substr(0, sName.find(tmpExt));
-					if (sName.find(rarExt) != std::wstring::npos) {
-						std::wstring secondPart = sName.substr(sName.find(tmpExt) + tmpExt.size());
-						secondPart = secondPart.substr(0, secondPart.find(rarExt));
-						sNewFilename += secondPart;
-					}
-					sNewFilename += rarExt;
+			std::wstring sName = strConvert(entry->d_name);
+			// If filename in backups folder begins with archiveName
+			// and contains tmpExt then take it into calculation
+			if (hasPrefix(sName, sArchiveName)
+			 && hasSubstr(sName, tmpExt)) {
+				// Create new name
+				std::wstring sNewFilename = sName.substr(0, sName.find(tmpExt));
+				if (sName.find(rarExt) != std::wstring::npos) {
+					std::wstring secondPart = sName.substr(sName.find(tmpExt) + tmpExt.size());
+					secondPart = secondPart.substr(0, secondPart.find(rarExt));
+					sNewFilename += secondPart;
+				}
+				sNewFilename += rarExt;
 
-					sName = strConvert(sBackupFolder) + L"\\" + sName;
-					nTotalSize += filesize(sName);
-					// remove .tmp from the end of filename
-					std::wstring wsCommand = L"rename \"" + sName + L"\" \"" + sNewFilename + L"\"";
-					std::wstring wsResult;
-					DWORD nResult = exec(wsCommand, wsResult, encoding);
-					if (nResult) { // if error when renaming (try deleting old file)
-						wsCommand = L"del \"" + strConvert(sBackupFolder) + L"\\" + sNewFilename + L"\"";
-						nResult = exec(wsCommand, wsResult, encoding);
-						if (nResult != 12 && nResult != 16) { // deletion successful
-							wsCommand = L"rename \"" + sName + L"\" \"" + sNewFilename + L"\"";
-							exec(wsCommand, wsResult, encoding);
-						}
+				sName = strConvert(sBackupFolder) + L"\\" + sName;
+				nTotalSize += filesize(sName);
+				// remove .tmp from the end of filename
+				std::wstring wsCommand = L"rename \"" + sName + L"\" \"" + sNewFilename + L"\"";
+				std::wstring wsResult;
+				DWORD nResult = exec(wsCommand, wsResult, encoding);
+				if (nResult) { // if error when renaming (try deleting old file)
+					wsCommand = L"del \"" + strConvert(sBackupFolder) + L"\\" + sNewFilename + L"\"";
+					nResult = exec(wsCommand, wsResult, encoding);
+					if (nResult != 12 && nResult != 16) { // deletion successful
+						wsCommand = L"rename \"" + sName + L"\" \"" + sNewFilename + L"\"";
+						exec(wsCommand, wsResult, encoding);
 					}
 				}
 			}

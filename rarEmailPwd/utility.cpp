@@ -317,10 +317,7 @@ bool hasPrefix(const std::wstring &s, const std::wstring &prefix) {
 	return (s.size() >= prefix.size()) && s.find(prefix) == 0;
 }
 bool hasSubstr(const std::wstring &s, const std::wstring &substr) {
-	if (s.size() >= substr.size())
-		return s.find(substr);
-	else
-		return false;
+	return (s.size() >= substr.size()) && s.find(substr) != std::wstring::npos;
 }
 
 std::wostream& wendl(std::wostream& out)
