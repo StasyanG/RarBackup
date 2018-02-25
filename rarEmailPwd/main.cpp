@@ -334,7 +334,8 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		WinRARLog.d(L"rarEmailPwd.main", wsResult);
 		if (nResult == 0 || nResult == 1) {
-			Log.d(L"rarEmailPwd.main", L"Archivation successful");
+			std::wstring strWarnings = (nResult == 1 ? L" (with warnings)" : L"");
+			Log.d(L"rarEmailPwd.main", L"Archivation successful" + strWarnings);
 
 			// Calcalating size of the archive (total)
 			std::ifstream::pos_type nFilesize = calculateTotalSizeOfArchive(options.getString("backup_path"), sArchiveName, nCCP, Log);
@@ -347,6 +348,7 @@ int wmain(int argc, wchar_t* argv[]) {
 			if (nSendEmails == 2) {
 				std::string sMessage = std::string(wsOutPath.begin(), wsOutPath.end()) + " \n " + sPassword + "\n";
 
+				sMessage += (nResult == 1 ? " (with warnings)\n" : "\n");
 				sMessage += "Time (start): " + sTimeStart + "\n";
 				sMessage += "Time (finish): " + getTime(0) + "\n";
 				sMessage += "Duration: " + sDuration + "\n";
@@ -429,7 +431,6 @@ int wmain(int argc, wchar_t* argv[]) {
 			report.addItem(item);
 		}
 
-		std::wcout << std::endl;
 		i++;
 	}
 

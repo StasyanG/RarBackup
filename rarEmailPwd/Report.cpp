@@ -43,17 +43,19 @@ void Report::createReport(const std::wstring &sFilename, const std::wstring sTim
 		this->items.sort(compRes);
 
 		// Count successes and errors
-		int nSuccessCnt = 0, nErrorCnt = 0;
+		int nSuccessCnt = 0, nWarnCnt = 0, nErrorCnt = 0;
 		for (ReportItem item : this->items) {
-			if (item.bResult != 0)
-				continue;
-			nErrorCnt++;
+			if (item.bResult == 0)
+				nErrorCnt++;
+			else if (item.bResult == 2)
+				nWarnCnt++;
 		}
-		nSuccessCnt = nCnt - nErrorCnt;
+		nSuccessCnt = nCnt - nWarnCnt - nErrorCnt;
 
 		fReport << L"<h3>"
-			<< L"<span style = \"color: #00cc00;\"><b>Success:</b> " << std::to_wstring(nSuccessCnt) << "</span>"
-			<< L" | <span style = \"color: #cc0000;\"><b>With errors:</b> " << std::to_wstring(nErrorCnt) << "</span>"
+			<< L"<span style = \"color: #00CC00;\"><b>Success:</b> " << std::to_wstring(nSuccessCnt) << "</span>"
+			<< L" | <span style = \"color: #FA8072;\"><b>With warnings:</b> " << std::to_wstring(nWarnCnt) << "</span>"
+			<< L" | <span style = \"color: #CC0000;\"><b>With errors:</b> " << std::to_wstring(nErrorCnt) << "</span>"
 			<< L"</h3>" << wendl;
 
 		fReport << L"<h3>Table of results</h3>" << wendl
@@ -71,9 +73,19 @@ void Report::createReport(const std::wstring &sFilename, const std::wstring sTim
 		fReport << L"<tbody>" << wendl;
 
 		for (ReportItem item : this->items) {
+			std::wstring strResult = L"";
+			if (item.bResult == 1) {
+				strResult = L"#00CC00;\">Success";
+			}
+			else if (item.bResult == 2) {
+				strResult = L"#FA8072;\">With warnings";
+			}
+			else {
+				strResult = L"#CC0000;\">With errors";
+			}
 			fReport << L"<tr>" << wendl
 				<< L"<td><span style = \"color: "
-				<< (item.bResult != 0 ? L"#00cc00;\">Success" : L"#cc0000;\">With errors")
+				<< strResult
 				<< L"</span></td>" << wendl
 				<< L"<td>" << item.sFolderPath << L"</td>" << wendl
 				<< L"<td>" << item.sMode << L"</td>" << wendl
