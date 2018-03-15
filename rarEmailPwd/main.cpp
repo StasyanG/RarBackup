@@ -344,15 +344,17 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 
 		DWORD nResult = exec(wsCommand, wsResult, nCCP);
+		WinRARLog.d(L"rarEmailPwd.main", L"WinRAR has finished");
+
 		replace(wsResult, L"\n", L"\r\n");
 		wsResult = L"\r\n" + wsResult;
+
+		WinRARLog.d(L"rarEmailPwd.main", wsResult);
 
 		time_t time_end;
 		time(&time_end);
 		double secs = difftime(time_end, time_start);
 		std::string sDuration = prettyTimeString(secs);
-
-		WinRARLog.d(L"rarEmailPwd.main", wsResult);
 		if (nResult == 0 || nResult == 1) {
 			std::wstring strWarnings = (nResult == 1 ? L" (with warnings)" : L"");
 			Log.d(L"rarEmailPwd.main", L"Archivation successful" + strWarnings);
