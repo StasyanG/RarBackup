@@ -306,6 +306,26 @@ int wmain(int argc, wchar_t* argv[]) {
 		std::string sPassword = randomStrGen(options.getInt("pwd_length"));
 		wsCommand = wsCommand + strConvert(" -hp\"" + sPassword + "\"", nCCP);
 
+		// Sending Email with password before archivation start
+		// (to make sure password is available in case of program failure)
+		Log.d(L"rarEmailPwd.main", L"Sending email with password");
+		if (nSendEmails == 2) {
+			std::string sMessage = std::string(wsOutPath.begin(), wsOutPath.end()) + " \n " + sPassword + "\n";
+
+			if (SendEmail(
+				options.getString("smtp_host"),
+				options.getString("smtp_user"),
+				options.getString("smtp_pass"),
+				options.getString("smtp_emailTo"),
+				std::string(sArchiveName.begin(), sArchiveName.end()) + " " + (nBackupMode == 0 ? "FULL" : "DIFF"),
+				sMessage,
+				std::forward_list<std::wstring>(),
+				Log,
+				nCCP)) {
+				Log.d(L"rarEmailPwd.sendEmail", L"ERROR Email was not sent.");
+			}
+		}
+		
 		/// TODO: REMOVE AFTER TESTING
 		//Log.d(L"rarEmailPwd.main", wsCommand);
 
