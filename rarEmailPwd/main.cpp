@@ -308,7 +308,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
 		// Sending Email with password before archivation start
 		// (to make sure password is available in case of program failure)
-		Log.d(L"rarEmailPwd.main", L"Sending email with password");
+		Log.d(L"rarEmailPwd.main", L"Sending email");
 		if (nSendEmails == 2) {
 			std::string sMessage = std::string(wsOutPath.begin(), wsOutPath.end()) + " \n " + sPassword + "\n";
 
@@ -323,6 +323,7 @@ int wmain(int argc, wchar_t* argv[]) {
 				Log,
 				nCCP)) {
 				Log.d(L"rarEmailPwd.sendEmail", L"ERROR Email was not sent.");
+				Log.d(L"rarEmailPwd.sendEmail", strConvert(sPassword, nCCP));
 			}
 		}
 		
@@ -652,6 +653,7 @@ int SendEmail(std::string sSmtpHost, std::string sSmtpUser, std::string sSmtpPas
 		//}
 
 		Log.e(L"rarEmailPwd.sendEmail", L"Error: " + strConvert(e.GetErrorText(), encoding));
+		Log.e(L"rarEmailPwd.sendEmail", L"-> Title: " + strConvert(sTitle, encoding));
 		//Log.e(L"rarEmailPwd.sendEmail", L"Unsent message:\r\n\r\n" + strConvert(sMessage, encoding) + L"\r\n");
 		bError = true;
 	}
